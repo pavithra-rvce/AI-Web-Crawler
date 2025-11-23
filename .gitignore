@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+ai/
+
+# Environment variables / secrets
+.env
+
+# OS files
+.DS_Store
+
+# Selenium / Chrome driver
+chromedriver
+chromedriver.exe
