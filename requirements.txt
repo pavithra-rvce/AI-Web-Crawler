@@ -1,8 +1,8 @@
 streamlit
+langchain
 beautifulsoup4
-requests
 lxml
 html5lib
 python-dotenv
 openai
-langchain
+undetected-chromedriver
