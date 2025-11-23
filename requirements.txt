@@ -1,7 +1,6 @@
 streamlit
-selenium
-undetected-chromedriver
 beautifulsoup4
+requests
 lxml
 html5lib
 python-dotenv
