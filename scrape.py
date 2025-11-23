@@ -1,7 +1,7 @@
 # scrape.py
 from bs4 import BeautifulSoup
 import time
-import undetected_chromedriver.v2 as uc
+import undetected_chromedriver as uc
 
 def scrape_website(website: str) -> str:
     """
@@ -20,7 +20,8 @@ def scrape_website(website: str) -> str:
     options.add_argument('--window-size=1920,1080')
 
     # Launch Chrome
-    driver = uc.Chrome(options=options)
+    driver = uc.Chrome(version_main=114, options=options)
+
 
     try:
         driver.get(website)
