@@ -1,80 +1,76 @@
-# scrape.py
-import time
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+import selenium.webdriver as webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
+import time
+
 
 def scrape_webiste(website: str) -> str:
     """
-    Scrape a website using Selenium with Chrome in headless mode.
-    Optimized for Streamlit Cloud deployment.
+    Open the given website with Chrome via Selenium and return the full HTML
+    after the page has finished loading (as much as Selenium can see).
+
+    It also scrolls the page to trigger some dynamic / lazy-loaded content.
     """
-    print("Launching Chrome browser...")
-    
-    chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-software-rasterizer")
-    chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-    
-    # Use webdriver-manager to automatically handle ChromeDriver
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    
+    print("launching chrome browser....")
+
+    chrome_driver_path = "./chromedriver"  # make sure this path is correct
+    options = webdriver.ChromeOptions()
+    # options.add_argument("--headless")   # uncomment if you want headless mode
+
+    driver = webdriver.Chrome(service=Service(chrome_driver_path), options=options)
+
     try:
         driver.get(website)
-        print("Page loaded")
-        
-        # Wait for <body> element
+        print("page loaded")
+
+        # 1️⃣ Wait until <body> is present
         WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
-        
-        # Scroll to load dynamic content
+
+        # 2️⃣ Scroll the page slowly to load dynamic content
         last_height = driver.execute_script("return document.body.scrollHeight")
-        for _ in range(5):
+
+        for _ in range(5):  # you can increase loops if you want more scrolling
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
+            time.sleep(2)  # wait for new content to load
+
             new_height = driver.execute_script("return document.body.scrollHeight")
             if new_height == last_height:
+                # no more new content
                 break
             last_height = new_height
-        
-        return driver.page_source
-    
-    except Exception as e:
-        print(f"Error during scraping: {str(e)}")
-        raise
-    
+
+        # 3️⃣ Now grab full page source
+        html = driver.page_source
+        return html
+
     finally:
         driver.quit()
 
 
 def extract_body_content(html_content: str) -> str:
     soup = BeautifulSoup(html_content, "html.parser")
-    return str(soup.body) if soup.body else ""
+    body_content = soup.body
+    if body_content:
+        return str(body_content)
+    return ""
 
 
 def clean_body_content(body_content: str) -> str:
     soup = BeautifulSoup(body_content, "html.parser")
-    
+
     for script_or_style in soup(["script", "style"]):
         script_or_style.extract()
-    
+
     cleaned_content = soup.get_text(separator="\n")
     cleaned_content = "\n".join(
         line.strip() for line in cleaned_content.splitlines() if line.strip()
     )
-    
+
     return cleaned_content
 
 
