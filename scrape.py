@@ -8,27 +8,27 @@ from selenium.webdriver.support import expected_conditions as EC
 
 def scrape_webiste(website: str) -> str:
     """
-    Scrape the website using undetected-chromedriver.
-    Returns cleaned full HTML after page load and scrolling.
+    Scrape a website using undetected-chromedriver in headless mode.
+    Works on Streamlit Cloud without specifying Chrome binary manually.
     """
     print("Launching Chrome browser...")
 
     options = uc.ChromeOptions()
-    options.add_argument("--headless=new")  # Run headless
+    options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--disable-extensions")
     options.add_argument("--window-size=1920,1080")
 
-    # Launch driver (Streamlit Cloud handles Chrome binary)
-    driver = uc.Chrome(version_main=114, options=options)
+    # Automatically detect Chrome binary on Streamlit Cloud
+    driver = uc.Chrome(options=options)
 
     try:
         driver.get(website)
         print("Page loaded")
 
-        # Wait until <body> is present
+        # Wait for <body> element
         WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
@@ -43,8 +43,7 @@ def scrape_webiste(website: str) -> str:
                 break
             last_height = new_height
 
-        html = driver.page_source
-        return html
+        return driver.page_source
 
     finally:
         driver.quit()
@@ -52,8 +51,7 @@ def scrape_webiste(website: str) -> str:
 
 def extract_body_content(html_content: str) -> str:
     soup = BeautifulSoup(html_content, "html.parser")
-    body_content = soup.body
-    return str(body_content) if body_content else ""
+    return str(soup.body) if soup.body else ""
 
 
 def clean_body_content(body_content: str) -> str:
