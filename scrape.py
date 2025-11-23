@@ -1,38 +1,44 @@
 # scrape.py
 import time
 from bs4 import BeautifulSoup
-import undetected_chromedriver as uc
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 def scrape_webiste(website: str) -> str:
     """
-    Scrape a website using undetected-chromedriver in headless mode.
-    Works on Streamlit Cloud without specifying Chrome binary manually.
+    Scrape a website using Selenium with Chrome in headless mode.
+    Optimized for Streamlit Cloud deployment.
     """
     print("Launching Chrome browser...")
-
-    options = uc.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--window-size=1920,1080")
-
-    # Automatically detect Chrome binary on Streamlit Cloud
-    driver = uc.Chrome(options=options)
-
+    
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-software-rasterizer")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+    
+    # Use webdriver-manager to automatically handle ChromeDriver
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    
     try:
         driver.get(website)
         print("Page loaded")
-
+        
         # Wait for <body> element
         WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
-
+        
         # Scroll to load dynamic content
         last_height = driver.execute_script("return document.body.scrollHeight")
         for _ in range(5):
@@ -42,9 +48,13 @@ def scrape_webiste(website: str) -> str:
             if new_height == last_height:
                 break
             last_height = new_height
-
+        
         return driver.page_source
-
+    
+    except Exception as e:
+        print(f"Error during scraping: {str(e)}")
+        raise
+    
     finally:
         driver.quit()
 
@@ -56,12 +66,15 @@ def extract_body_content(html_content: str) -> str:
 
 def clean_body_content(body_content: str) -> str:
     soup = BeautifulSoup(body_content, "html.parser")
+    
     for script_or_style in soup(["script", "style"]):
         script_or_style.extract()
+    
     cleaned_content = soup.get_text(separator="\n")
     cleaned_content = "\n".join(
         line.strip() for line in cleaned_content.splitlines() if line.strip()
     )
+    
     return cleaned_content
 
 
