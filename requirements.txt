@@ -5,4 +5,4 @@ lxml
 html5lib
 python-dotenv
 openai
-undetected-chromedriver
+undetected-chromedriver>=3.2.6
