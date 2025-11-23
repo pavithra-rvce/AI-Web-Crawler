@@ -1,8 +1,10 @@
 streamlit
 langchain
+langchain-core
 beautifulsoup4
 lxml
 html5lib
 python-dotenv
 openai
-undetected-chromedriver>=3.2.6
+selenium
+webdriver-manager
