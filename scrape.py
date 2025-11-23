@@ -1,36 +1,39 @@
 # scrape.py
-from bs4 import BeautifulSoup
 import time
+from bs4 import BeautifulSoup
 import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
-def scrape_website(website: str) -> str:
+def scrape_webiste(website: str) -> str:
     """
-    Open the given website with Chrome via undetected-chromedriver and return the fully rendered HTML.
+    Scrape the website using undetected-chromedriver.
+    Returns cleaned full HTML after page load and scrolling.
     """
-
     print("Launching Chrome browser...")
 
     options = uc.ChromeOptions()
-    options.headless = True  # Run in headless mode
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_argument('--disable-extensions')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=1920,1080')
+    options.add_argument("--headless=new")  # Run headless
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--window-size=1920,1080")
 
-    # Launch Chrome
+    # Launch driver (Streamlit Cloud handles Chrome binary)
     driver = uc.Chrome(version_main=114, options=options)
-
 
     try:
         driver.get(website)
         print("Page loaded")
 
-        # Wait a few seconds for dynamic content to load
-        time.sleep(5)
+        # Wait until <body> is present
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
 
-        # Scroll slowly to trigger lazy loading
+        # Scroll to load dynamic content
         last_height = driver.execute_script("return document.body.scrollHeight")
         for _ in range(5):
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -64,8 +67,8 @@ def clean_body_content(body_content: str) -> str:
     return cleaned_content
 
 
-def split_dom_content(dom_content: str, max_length: int = 6000):
+def split_dom_content(dom_content: str, max_lenght: int = 6000):
     return [
-        dom_content[i : i + max_length]
-        for i in range(0, len(dom_content), max_length)
+        dom_content[i : i + max_lenght]
+        for i in range(0, len(dom_content), max_lenght)
     ]
