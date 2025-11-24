@@ -653,7 +653,6 @@ with col_side:
         <div style="color: {t['text_muted']}; font-size: 0.85rem; line-height: 1.7;">
             <p>• Be specific with your parsing instructions</p>
             <p>• Use keywords like "extract", "find", "list"</p>
-            <p>• Specify the format you want (JSON, list, table)</p>
             <p>• Include examples if possible</p>
         </div>
     </div>
