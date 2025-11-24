@@ -431,19 +431,32 @@ with col_main:
             )
 
     # Scraping logic
-    if scrape_clicked and url:
-        with st.spinner("🔄 Scraping website..."):
-            try:
-                result = scrape_webiste(url)
-                body_content = extract_body_content(result)
-                cleaned_content = clean_body_content(body_content)
-                st.session_state.dom_content = cleaned_content
-                st.session_state.scrape_status = "success"
-                st.success("✅ Website scraped successfully!")
-            except Exception as e:
-                st.session_state.scrape_status = "error"
-                st.error(f"❌ Error: {str(e)}")
-
+    # Scraping logic
+if scrape_clicked and url:
+    with st.spinner("🔄 Scraping website (this may take a while for protected sites)..."):
+        try:
+            result = scrape_webiste(url)
+            body_content = extract_body_content(result)
+            cleaned_content = clean_body_content(body_content)
+            
+            # Check if we got blocked or got limited content
+            if len(cleaned_content.strip()) < 500:
+                st.warning("⚠️ Limited content retrieved - site may have anti-bot protection")
+            elif any(blocked_indicator in cleaned_content.lower() for blocked_indicator in ['cloudflare', 'enable javascript', 'verification', 'security check', 'please complete the security check']):
+                st.warning("⚠️ Website has anti-bot protection. Content may be limited.")
+            
+            st.session_state.dom_content = cleaned_content
+            st.session_state.scrape_status = "success"
+            st.success("✅ Website scraped successfully!")
+            
+        except Exception as e:
+            st.session_state.scrape_status = "error"
+            error_msg = str(e)
+            if "cloudflare" in error_msg.lower() or "challenge" in error_msg.lower() or "bot" in error_msg.lower():
+                st.error("❌ Website blocked the request with anti-bot protection")
+                st.info("💡 Try a different website or check if the site allows scraping")
+            else:
+                st.error(f"❌ Error: {error_msg}")
     # DOM Content Display
     if st.session_state.dom_content:
         st.markdown(f"""
