@@ -6,64 +6,126 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import time
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.os_manager import ChromeType  # Add this import
+from webdriver_manager.core.os_manager import ChromeType
 
 
 def scrape_webiste(website: str) -> str:
     """
-    Open the given website with Chrome via Selenium and return the full HTML
-    after the page has finished loading (as much as Selenium can see).
-
-    It also scrolls the page to trigger some dynamic / lazy-loaded content.
+    Advanced scraping with anti-detection measures for production
     """
-    print("launching chrome browser....")
+    print("launching chrome browser with anti-detection...")
 
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    
+    # Essential options for deployment
+    options.add_argument("--headless")  # Keep headless for deployment
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--remote-debugging-port=9222")
     
-    # For Chromium support and latest driver version
+    # Advanced anti-detection options
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-features=VizDisplayCompositor")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-backgrounding-occluded-windows")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--disable-extensions")
+    
+    # Realistic browser behavior
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    
+    # Exclude automation indicators
+    options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+    options.add_experimental_option('useAutomationExtension', False)
+
     try:
-        # This will get the latest compatible ChromeDriver
         driver_path = ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
         driver = webdriver.Chrome(service=Service(driver_path), options=options)
     except Exception as e:
         print(f"Error with ChromeDriverManager: {e}")
-        # Fallback: use system Chrome driver without specifying path
         driver = webdriver.Chrome(options=options)
 
     try:
+        # Execute advanced anti-detection scripts
+        driver.execute_cdp_cmd('Network.setUserAgentOverride', {
+            "userAgent": 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        })
+        
+        # Remove webdriver property
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        
+        # Remove automation traces
+        driver.execute_script("""
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5],
+            });
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['en-US', 'en'],
+            });
+        """)
+        
+        print(f"Navigating to: {website}")
         driver.get(website)
-        print("page loaded")
+        
+        # Wait for initial load
+        time.sleep(3)
+        
+        print("Page loaded, checking for challenges...")
 
-        # 1️⃣ Wait until <body> is present
-        WebDriverWait(driver, 15).until(
+        # Wait for page to load completely with longer timeout
+        WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
 
-        # 2️⃣ Scroll the page slowly to load dynamic content
-        last_height = driver.execute_script("return document.body.scrollHeight")
+        # Check for blocking pages
+        page_source = driver.page_source.lower()
+        
+        challenge_indicators = [
+            'cloudflare', 'challenge', 'verification', 'captcha',
+            'enable javascript', 'security check', 'please wait'
+        ]
+        
+        if any(indicator in page_source for indicator in challenge_indicators):
+            print("Anti-bot challenge detected, attempting to bypass...")
+            
+            # Wait longer and try to refresh
+            time.sleep(10)
+            driver.refresh()
+            time.sleep(5)
 
-        for _ in range(5):  # you can increase loops if you want more scrolling
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)  # wait for new content to load
+        # Human-like scrolling
+        print("Simulating human-like behavior...")
+        
+        # Multiple scroll actions with delays
+        scroll_points = [0.2, 0.5, 0.8, 1.0]  # Scroll to different positions
+        
+        for point in scroll_points:
+            driver.execute_script(f"window.scrollTo(0, document.body.scrollHeight * {point});")
+            time.sleep(2)
+        
+        # Scroll back to top
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(1)
 
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                # no more new content
-                break
-            last_height = new_height
-
-        # 3️⃣ Now grab full page source
+        # Final page source
         html = driver.page_source
+        
+        # Content validation
+        if len(html.strip()) < 1000:
+            print(f"Warning: Limited content retrieved ({len(html)} chars)")
+            
+        print(f"Successfully retrieved content: {len(html)} characters")
         return html
 
     except Exception as e:
-        print(f"Error during scraping: {e}")
-        raise e
+        print(f"Error during scraping: {str(e)}")
+        # Return whatever content we can get
+        try:
+            return driver.page_source
+        except:
+            raise Exception(f"Scraping failed: {str(e)}")
     finally:
         driver.quit()
 
@@ -79,7 +141,7 @@ def extract_body_content(html_content: str) -> str:
 def clean_body_content(body_content: str) -> str:
     soup = BeautifulSoup(body_content, "html.parser")
 
-    for script_or_style in soup(["script", "style"]):
+    for script_or_style in soup(["script", "style", "nav", "header", "footer"]):
         script_or_style.extract()
 
     cleaned_content = soup.get_text(separator="\n")
