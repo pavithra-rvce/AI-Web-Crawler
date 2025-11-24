@@ -11,33 +11,30 @@ from webdriver_manager.core.os_manager import ChromeType
 
 def scrape_webiste(website: str) -> str:
     """
-    Advanced scraping with anti-detection measures for production
+    Optimized scraping with balanced speed and anti-detection
     """
-    print("launching chrome browser with anti-detection...")
+    print("launching chrome browser...")
 
     options = webdriver.ChromeOptions()
     
     # Essential options for deployment
-    options.add_argument("--headless")  # Keep headless for deployment
+    options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     
-    # Advanced anti-detection options
+    # Anti-detection options (keep these)
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--disable-features=VizDisplayCompositor")
     options.add_argument("--disable-background-timer-throttling")
-    options.add_argument("--disable-backgrounding-occluded-windows")
     options.add_argument("--disable-renderer-backgrounding")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--disable-extensions")
     
-    # Realistic browser behavior
+    # Performance optimizations
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
     
     # Exclude automation indicators
-    options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
 
     try:
@@ -48,80 +45,51 @@ def scrape_webiste(website: str) -> str:
         driver = webdriver.Chrome(options=options)
 
     try:
-        # Execute advanced anti-detection scripts
-        driver.execute_cdp_cmd('Network.setUserAgentOverride', {
-            "userAgent": 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        })
-        
-        # Remove webdriver property
+        # Quick anti-detection scripts
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        
-        # Remove automation traces
-        driver.execute_script("""
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [1, 2, 3, 4, 5],
-            });
-            Object.defineProperty(navigator, 'languages', {
-                get: () => ['en-US', 'en'],
-            });
-        """)
         
         print(f"Navigating to: {website}")
         driver.get(website)
         
-        # Wait for initial load
-        time.sleep(3)
+        # Reduced initial wait
+        time.sleep(2)
         
         print("Page loaded, checking for challenges...")
 
-        # Wait for page to load completely with longer timeout
-        WebDriverWait(driver, 30).until(
+        # Wait for page to load with reasonable timeout
+        WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
 
-        # Check for blocking pages
+        # Quick check for blocking pages
         page_source = driver.page_source.lower()
         
-        challenge_indicators = [
-            'cloudflare', 'challenge', 'verification', 'captcha',
-            'enable javascript', 'security check', 'please wait'
-        ]
+        challenge_indicators = ['cloudflare', 'challenge', 'verification', 'captcha']
         
         if any(indicator in page_source for indicator in challenge_indicators):
-            print("Anti-bot challenge detected, attempting to bypass...")
-            
-            # Wait longer and try to refresh
-            time.sleep(10)
-            driver.refresh()
-            time.sleep(5)
+            print("Anti-bot challenge detected, waiting briefly...")
+            time.sleep(5)  # Reduced from 10 seconds
 
-        # Human-like scrolling
-        print("Simulating human-like behavior...")
+        # Faster scrolling with fewer delays
+        print("Quick scrolling...")
         
-        # Multiple scroll actions with delays
-        scroll_points = [0.2, 0.5, 0.8, 1.0]  # Scroll to different positions
+        # Single scroll to bottom instead of multiple
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(1)  # Reduced from 2 seconds
         
-        for point in scroll_points:
-            driver.execute_script(f"window.scrollTo(0, document.body.scrollHeight * {point});")
-            time.sleep(2)
-        
-        # Scroll back to top
+        # Quick scroll back to top
         driver.execute_script("window.scrollTo(0, 0);")
-        time.sleep(1)
+        time.sleep(0.5)  # Reduced from 1 second
 
         # Final page source
         html = driver.page_source
         
-        # Content validation
-        if len(html.strip()) < 1000:
-            print(f"Warning: Limited content retrieved ({len(html)} chars)")
-            
         print(f"Successfully retrieved content: {len(html)} characters")
         return html
 
     except Exception as e:
         print(f"Error during scraping: {str(e)}")
-        # Return whatever content we can get
+        # Return whatever content we can get quickly
         try:
             return driver.page_source
         except:
