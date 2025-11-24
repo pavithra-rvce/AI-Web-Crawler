@@ -5,7 +5,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import time
-from webdriver_manager.chrome import ChromeDriverManager  # Add this import
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.os_manager import ChromeType  # Add this import
 
 
 def scrape_webiste(website: str) -> str:
@@ -17,14 +18,22 @@ def scrape_webiste(website: str) -> str:
     """
     print("launching chrome browser....")
 
-    # Remove the chrome_driver_path line and use ChromeDriverManager instead
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")   # Add headless for deployment
-    options.add_argument("--no-sandbox")  # Add for deployment
-    options.add_argument("--disable-dev-shm-usage")  # Add for deployment
-
-    # Use ChromeDriverManager to automatically handle driver
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--remote-debugging-port=9222")
+    
+    # For Chromium support and latest driver version
+    try:
+        # This will get the latest compatible ChromeDriver
+        driver_path = ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
+        driver = webdriver.Chrome(service=Service(driver_path), options=options)
+    except Exception as e:
+        print(f"Error with ChromeDriverManager: {e}")
+        # Fallback: use system Chrome driver without specifying path
+        driver = webdriver.Chrome(options=options)
 
     try:
         driver.get(website)
@@ -52,6 +61,9 @@ def scrape_webiste(website: str) -> str:
         html = driver.page_source
         return html
 
+    except Exception as e:
+        print(f"Error during scraping: {e}")
+        raise e
     finally:
         driver.quit()
 
