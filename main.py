@@ -432,7 +432,7 @@ with col_main:
 
     # Scraping logic - FIXED INDENTATION
     if scrape_clicked and url:
-        with st.spinner("🔄 Scraping website (this may take a while for protected sites)..."):
+        with st.spinner("🔄 Scraping website (may take 10-20 seconds)..."):
             try:
                 result = scrape_webiste(url)
                 body_content = extract_body_content(result)
