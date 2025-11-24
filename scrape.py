@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import time
+from webdriver_manager.chrome import ChromeDriverManager  # Add this import
 
 
 def scrape_webiste(website: str) -> str:
@@ -16,11 +17,14 @@ def scrape_webiste(website: str) -> str:
     """
     print("launching chrome browser....")
 
-    chrome_driver_path = "./chromedriver"  # make sure this path is correct
+    # Remove the chrome_driver_path line and use ChromeDriverManager instead
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")   # uncomment if you want headless mode
+    options.add_argument("--headless")   # Add headless for deployment
+    options.add_argument("--no-sandbox")  # Add for deployment
+    options.add_argument("--disable-dev-shm-usage")  # Add for deployment
 
-    driver = webdriver.Chrome(service=Service(chrome_driver_path), options=options)
+    # Use ChromeDriverManager to automatically handle driver
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     try:
         driver.get(website)
