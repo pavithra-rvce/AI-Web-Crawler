@@ -7,6 +7,5 @@ html5lib
 python-dotenv
 openai
 requests
-requests-html
 urllib3
-pyppeteer
+fake-useragent
