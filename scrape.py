@@ -2,7 +2,6 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import random
-from fake_useragent import UserAgent
 
 def scrape_website(website: str) -> str:
     """
@@ -34,10 +33,15 @@ def scrape_website(website: str) -> str:
 def try_scrape_with_headers(url: str) -> str:
     """Try scraping with proper headers and user agent rotation"""
     try:
-        ua = UserAgent()
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'
+        ]
         
         headers = {
-            'User-Agent': ua.random,
+            'User-Agent': random.choice(user_agents),
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
             'Accept-Encoding': 'gzip, deflate',
