@@ -1,5 +1,5 @@
 import streamlit as st
-from scrape import scrape_webiste, split_dom_content, clean_body_content, extract_body_content
+from scrape import scrape_website, split_dom_content, clean_body_content, extract_body_content
 from parse import parse_with_external_ai
 import time
 
@@ -434,7 +434,7 @@ with col_main:
     if scrape_clicked and url:
         with st.spinner("🔄 Scraping website (may take 10-20 seconds)..."):
             try:
-                result = scrape_webiste(url)
+                result = scrape_website(url)
                 body_content = extract_body_content(result)
                 cleaned_content = clean_body_content(body_content)
                 
