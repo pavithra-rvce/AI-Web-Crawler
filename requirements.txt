@@ -6,5 +6,7 @@ lxml
 html5lib
 python-dotenv
 openai
-selenium
-webdriver-manager
+requests
+requests-html
+urllib3
+pyppeteer
