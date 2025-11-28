@@ -1,127 +1,192 @@
-import selenium.webdriver as webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import requests
 from bs4 import BeautifulSoup
 import time
-from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.os_manager import ChromeType
+import streamlit as st
+from requests_html import HTMLSession
+import random
 
-
-def scrape_webiste(website: str) -> str:
+def scrape_website(website: str) -> str:
     """
-    Optimized scraping with balanced speed and anti-detection
+    Permanent scraping solution without ChromeDriver dependencies
+    Uses multiple fallback strategies for maximum reliability
     """
-    print("launching chrome browser...")
-
-    options = webdriver.ChromeOptions()
+    print(f"Scraping: {website}")
     
-    # Essential options for deployment
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
+    # Strategy 1: Try requests-html with JavaScript rendering
+    html_content = try_requests_html(website)
+    if html_content and is_valid_content(html_content):
+        print("✅ Success with requests-html + JavaScript")
+        return html_content
     
-    # Anti-detection options (keep these)
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--disable-features=VizDisplayCompositor")
-    options.add_argument("--disable-background-timer-throttling")
-    options.add_argument("--disable-renderer-backgrounding")
+    # Strategy 2: Try requests-html without JavaScript
+    html_content = try_requests_html(website, render_js=False)
+    if html_content and is_valid_content(html_content):
+        print("✅ Success with requests-html (no JavaScript)")
+        return html_content
     
-    # Performance optimizations
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    # Strategy 3: Try direct requests with proper headers
+    html_content = try_direct_requests(website)
+    if html_content and is_valid_content(html_content):
+        print("✅ Success with direct requests")
+        return html_content
     
-    # Exclude automation indicators
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-
+    # Strategy 4: Final fallback - selenium only if absolutely necessary
     try:
-        driver_path = ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
-        driver = webdriver.Chrome(service=Service(driver_path), options=options)
+        html_content = try_selenium_fallback(website)
+        if html_content and is_valid_content(html_content):
+            print("✅ Success with Selenium fallback")
+            return html_content
     except Exception as e:
-        print(f"Error with ChromeDriverManager: {e}")
-        driver = webdriver.Chrome(options=options)
+        print(f"Selenium fallback also failed: {e}")
+    
+    raise Exception("All scraping methods failed. Site may be blocking requests.")
 
+def try_requests_html(url: str, render_js: bool = True) -> str:
+    """Try requests-html approach"""
     try:
-        # Quick anti-detection scripts
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        session = HTMLSession()
         
-        print(f"Navigating to: {website}")
-        driver.get(website)
+        # Rotating user agents
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'
+        ]
         
-        # Reduced initial wait
-        time.sleep(2)
+        headers = {
+            'User-Agent': random.choice(user_agents),
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
         
-        print("Page loaded, checking for challenges...")
-
-        # Wait for page to load with reasonable timeout
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-
-        # Quick check for blocking pages
-        page_source = driver.page_source.lower()
+        response = session.get(url, headers=headers, timeout=30)
         
-        challenge_indicators = ['cloudflare', 'challenge', 'verification', 'captcha']
+        if render_js:
+            # Render JavaScript with retry logic
+            try:
+                response.html.render(timeout=20, sleep=2)
+            except:
+                # If JavaScript rendering fails, continue with basic HTML
+                print("JavaScript rendering failed, using basic HTML")
         
-        if any(indicator in page_source for indicator in challenge_indicators):
-            print("Anti-bot challenge detected, waiting briefly...")
-            time.sleep(5)  # Reduced from 10 seconds
-
-        # Faster scrolling with fewer delays
-        print("Quick scrolling...")
+        return response.html.html
         
-        # Single scroll to bottom instead of multiple
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(1)  # Reduced from 2 seconds
-        
-        # Quick scroll back to top
-        driver.execute_script("window.scrollTo(0, 0);")
-        time.sleep(0.5)  # Reduced from 1 second
-
-        # Final page source
-        html = driver.page_source
-        
-        print(f"Successfully retrieved content: {len(html)} characters")
-        return html
-
     except Exception as e:
-        print(f"Error during scraping: {str(e)}")
-        # Return whatever content we can get quickly
+        print(f"requests-html failed: {e}")
+        return None
+
+def try_direct_requests(url: str) -> str:
+    """Try direct requests approach"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+        }
+        
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        return response.text
+        
+    except Exception as e:
+        print(f"Direct requests failed: {e}")
+        return None
+
+def try_selenium_fallback(url: str) -> str:
+    """
+    Selenium as LAST RESORT only - with maximum compatibility
+    """
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from webdriver_manager.chrome import ChromeDriverManager
+        from selenium.webdriver.chrome.service import Service
+        
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--window-size=1920,1080")
+        
+        # Multiple initialization strategies
         try:
-            return driver.page_source
+            # Strategy 1: Use system Chrome
+            driver = webdriver.Chrome(options=chrome_options)
         except:
-            raise Exception(f"Scraping failed: {str(e)}")
-    finally:
+            # Strategy 2: Use webdriver-manager
+            driver_path = ChromeDriverManager().install()
+            driver = webdriver.Chrome(service=Service(driver_path), options=chrome_options)
+        
+        driver.get(url)
+        time.sleep(3)
+        content = driver.page_source
         driver.quit()
+        return content
+        
+    except Exception as e:
+        print(f"Selenium fallback failed: {e}")
+        return None
 
+def is_valid_content(html_content: str, min_length: int = 100) -> bool:
+    """Check if content is valid and not a blocking page"""
+    if not html_content or len(html_content) < min_length:
+        return False
+    
+    # Check for common blocking indicators
+    blocking_indicators = [
+        'access denied', 'cloudflare', 'captcha', 'security check',
+        'enable javascript', 'bot detected', 'permission denied'
+    ]
+    
+    content_lower = html_content.lower()
+    
+    # If it's clearly a blocking page, consider it invalid
+    if any(indicator in content_lower for indicator in blocking_indicators):
+        return False
+    
+    return True
 
 def extract_body_content(html_content: str) -> str:
-    soup = BeautifulSoup(html_content, "html.parser")
-    body_content = soup.body
-    if body_content:
-        return str(body_content)
-    return ""
-
+    """Extract body content from HTML"""
+    try:
+        soup = BeautifulSoup(html_content, "html.parser")
+        body_content = soup.body
+        if body_content:
+            return str(body_content)
+        return html_content  # Return original if no body found
+    except:
+        return html_content
 
 def clean_body_content(body_content: str) -> str:
-    soup = BeautifulSoup(body_content, "html.parser")
+    """Clean and extract text from body content"""
+    try:
+        soup = BeautifulSoup(body_content, "html.parser")
 
-    for script_or_style in soup(["script", "style", "nav", "header", "footer"]):
-        script_or_style.extract()
+        # Remove unwanted elements
+        for element in soup(["script", "style", "nav", "header", "footer", "aside"]):
+            element.extract()
 
-    cleaned_content = soup.get_text(separator="\n")
-    cleaned_content = "\n".join(
-        line.strip() for line in cleaned_content.splitlines() if line.strip()
-    )
+        # Get clean text
+        cleaned_content = soup.get_text(separator="\n")
+        cleaned_content = "\n".join(
+            line.strip() for line in cleaned_content.splitlines() if line.strip()
+        )
 
-    return cleaned_content
+        return cleaned_content
+    except:
+        return body_content
 
-
-def split_dom_content(dom_content: str, max_lenght: int = 6000):
+def split_dom_content(dom_content: str, max_length: int = 6000):
+    """Split content into chunks for processing"""
     return [
-        dom_content[i : i + max_lenght]
-        for i in range(0, len(dom_content), max_lenght)
+        dom_content[i : i + max_length]
+        for i in range(0, len(dom_content), max_length)
     ]
